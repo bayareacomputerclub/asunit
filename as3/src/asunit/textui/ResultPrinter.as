@@ -6,7 +6,7 @@ package asunit.textui {
     import asunit.framework.TestResult;
     import asunit.runner.BaseTestRunner;
     import asunit.runner.Version;
-    
+
     import flash.display.Sprite;
     import flash.events.*;
     import flash.system.Capabilities;
@@ -19,17 +19,18 @@ package asunit.textui {
     /**
     *   This is the base class for collecting test output and formatting for different
     *   displays.
-    *   
+    *
     *   This class simply presents test results as if they were being shown on a terminal.
-    *   
-    *   The <code>XMLResultPrinter</code> provides a good example of how this class can 
+    *
+    *   The <code>XMLResultPrinter</code> provides a good example of how this class can
     *   be subclassed and used to emit different/additional output.
-    *   
+    *
     *   @see XMLResultPrinter
     **/
     public class ResultPrinter extends Sprite implements TestListener {
         private var fColumn:int = 0;
         private var textArea:TextField;
+		private var defaultFormat:TextFormat;
         private var gutter:uint = 0;
         private var backgroundColor:uint = 0x333333;
         private var bar:SuccessBar;
@@ -56,11 +57,12 @@ package asunit.textui {
             textArea.backgroundColor = backgroundColor;
             textArea.border = true;
             textArea.wordWrap = true;
-            var format:TextFormat = new TextFormat();
-            format.font = "Verdana";
-            format.size = 10;
-            format.color = 0xFFFFFF;
-            textArea.defaultTextFormat = format;
+			textArea.multiline = true;
+            defaultFormat = new TextFormat();
+            defaultFormat.font = "Verdana";
+            defaultFormat.size = 10;
+            defaultFormat.color = 0xFFFFFF;
+            textArea.defaultTextFormat = defaultFormat;
             addChild(textArea);
             println("AsUnit " + Version.id() + " by Luke Bayes and Ali Mills");
             println("");
@@ -73,7 +75,7 @@ package asunit.textui {
         public function setShowTrace(showTrace:Boolean):void {
             this.showTrace = showTrace;
         }
-        
+
         public override function set width(w:Number):void {
             textArea.x = gutter;
             textArea.width = w - gutter*2;
@@ -90,19 +92,38 @@ package asunit.textui {
 
         public function println(...args:Array):void {
             textArea.appendText(args.toString() + "\n");
+            //textArea.htmlText += '<p>' + (args.toString()) + '</p>';
         }
 
         public function print(...args:Array):void {
             textArea.appendText(args.toString());
+            //textArea.htmlText += (args.toString());
         }
-        
+		
+		protected function printHtml(html:String):void {
+			html = '<font face="' + defaultFormat.font
+				+'" size="' + defaultFormat.size
+				+'" color="#' + defaultFormat.color.toString(16) +'">'
+				+ html
+				+ '</font>';
+			textArea.htmlText += html;
+		}
+		
+		public static function escapeHtml(html:String):String
+		{
+			return html.replace(/&/g, "&amp;")
+				.replace(/</g, "&lt;")
+				.replace(/>/g, "&gt;")
+				.replace(/"/g, "&quot;");
+		}
+
         /**
          * API for use by textui.TestRunner
          */
-         
+
         public function run(test:Test):void {
         }
-        
+
         public function printResult(result:TestResult, runTime:Number):void {
             printHeader(runTime);
             printErrors(result);
@@ -157,14 +178,18 @@ package asunit.textui {
             // I feel like making this a println, then adding a line giving the throwable a chance to print something
             // before we get to the stack trace.
             var startIndex:uint = textArea.text.length;
+			println();
             println(count + ") " + booBoo.failedFeature());
             var endIndex:uint = textArea.text.length;
 
-            var format:TextFormat = textArea.getTextFormat();
+            var format:TextFormat = textArea.defaultTextFormat;
             format.bold = true;
 
             // GROSS HACK because of bug in flash player - TextField isn't accepting formats...
-            setTimeout(onFormatTimeout, 1, format, startIndex, endIndex);
+            //setTimeout(onFormatTimeout, 1, format, startIndex, endIndex);
+			
+			// Looks like the HACK isn't necessary anymore.
+            textArea.setTextFormat(format, startIndex, endIndex);
         }
 
         public function onFormatTimeout(format:TextFormat, startIndex:uint, endIndex:uint):void {
@@ -172,9 +197,15 @@ package asunit.textui {
         }
 
         protected function printDefectTrace(booBoo:TestFailure):void {
-            println(BaseTestRunner.getFilteredTrace(booBoo.thrownException().getStackTrace()));
+            var stack:String = BaseTestRunner.getFilteredTrace(booBoo.thrownException().getStackTrace());
+			stack = escapeHtml(stack);
+			var method:String = booBoo.failedMethod();
+			stack = stack.replace(new RegExp(method, 'g'), '<font color="#FFAAAA"><b>' + method + '</b></font>');
+			stack += '<br>';
+			//printHtml('<p>'+stack+'</p>');
+			printHtml(stack);
         }
-
+		
         protected function printFooter(result:TestResult):void {
             println();
             if (result.wasSuccessful()) {
@@ -186,11 +217,11 @@ package asunit.textui {
                              ",  Failures: "+result.failureCount()+
                              ",  Errors: "+result.errorCount());
             }
-            
+
             printTimeSummary();
             println();
         }
-        
+
         protected function printTimeSummary():void {
             testTimes.sortOn('duration', Array.NUMERIC | Array.DESCENDING);
             println();
