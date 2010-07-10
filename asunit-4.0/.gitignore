@@ -1,4 +1,6 @@
 *.tmproj
+.bundle/
+*.gem
 doc/*
 bin/*.swc
 bin/*.swf

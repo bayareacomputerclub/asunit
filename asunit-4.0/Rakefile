@@ -1,8 +1,11 @@
 require 'bundler'
 Bundler.require 
 
+lib = File.join(File.dirname(__FILE__), 'sprout', 'lib')
+$:.unshift lib unless $:.include? lib
+
 require 'rake/clean'
-require File.join(File.dirname(__FILE__), 'sprout', 'lib', 'asunit4')
+require 'asunit4'
 
 test_input = "AsUnitRunner"
 

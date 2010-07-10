@@ -1,6 +1,12 @@
 # -*- encoding: utf-8 -*-
 
-require File.join(File.dirname(__FILE__), 'sprout', 'lib', 'asunit4')
+require 'bundler'
+Bundler.require
+
+lib = File.join(File.dirname(__FILE__), 'sprout', 'lib')
+$:.unshift lib unless $:.include? lib
+
+require 'asunit4'
 require 'rake'
 
 Gem::Specification.new do |s|
